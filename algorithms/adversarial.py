@@ -21,6 +21,25 @@ class MultiAgentSearchAgent(ABC):
 class MinimaxAgent(MultiAgentSearchAgent):
     """Agente Minimax para el defensor MAX frente al intruso MIN."""
 
+    def _minimax_value(self, state: GameState, agent_index: int, depth_left: int):
+      
+      self.nodes_evaluated += 1
+      
+      if state.is_win() or state.is_lose() or depth_left == 0:
+        return evaluation_function(state)
+      
+      legal_actions = state.get_legal_actions(agent_index)
+      siguiente_agente = (agent_index + 1) % state.get_num_agents()
+      
+      minimax_values = []
+      for action in legal_actions:
+        minimax_values.append(self._minimax_value(state.generate_successor(agent_index, action), siguiente_agente, depth_left - 1))
+      
+      if agent_index == 0:
+        return max(minimax_values)
+      else:
+        return min(minimax_values)
+    
     def get_action(self, state: GameState) -> str | None:
         """
         Retorna la acción del defensor con mayor valor Minimax.
@@ -40,8 +59,25 @@ class MinimaxAgent(MultiAgentSearchAgent):
         - Reinicie las métricas y cuente una vez cada estado procesado, incluida
           la raíz. Retorne la acción de MAX y conserve la primera en los empates.
         """
-        # TODO: Add your code here
-        raise NotImplementedError("Punto 4: implemente MinimaxAgent.get_action")
+        
+        self.nodes_evaluated = 0
+        self.nodes_evaluated += 1
+        
+        legal_actions = state.get_legal_actions(0)
+        if legal_actions == []:
+          return None
+        
+        action_minimax = 0
+        action_chosen = ""
+        for action in legal_actions:
+          successor_state = state.generate_successor(0, action)
+          successor_minimax = self._minimax_value(successor_state, 1, self.depth - 1)
+          
+          if successor_minimax > action_minimax or action_chosen == "":
+            action_minimax = successor_minimax
+            action_chosen = action
+        
+        return action_chosen
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
