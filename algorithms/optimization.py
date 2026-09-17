@@ -19,11 +19,7 @@ def configuration_score(
     return coverage - redundancy - exposure
 
 
-def hill_climbing(
-    problem: SmartGridOptimizationProblem,
-    initial_configuration: Configuration,
-    max_iterations: int = 500,
-) -> OptimizationResult:
+def hill_climbing(problem: SmartGridOptimizationProblem, initial_configuration: Configuration, max_iterations: int = 500,) -> OptimizationResult:
     """
     Ejecuta ascenso de colina con mejora estricta.
 
@@ -38,8 +34,43 @@ def hill_climbing(
     - Inicialice los historiales con la configuración inicial y agregue solo las
       mejoras aceptadas antes de retornar el OptimizationResult.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 1: implemente hill_climbing")
+    
+    estado_actual =initial_configuration
+    puntaje_actual = configuration_score (problem, estado_actual)
+    
+    evaluaciones = 1 
+    iteraciones= 0
+    
+    historial = [estado_actual]
+    historial_puntajes = [puntaje_actual]
+    
+    mejora_el_estado=True
+    while iteraciones < max_iterations and mejora_el_estado:
+        vecinos = problem.neighbors(estado_actual)
+        if vecinos:
+            mejor_vecino= None
+            puntaje_mejor_vecino = float("-inf")
+            
+            for vecino in vecinos:
+                puntaje_vecino = configuration_score(problem, vecino)
+                evaluaciones += 1
+                if puntaje_vecino > puntaje_mejor_vecino:
+                    mejor_vecino = vecino
+                    puntaje_mejor_vecino = puntaje_vecino
+            
+            if puntaje_mejor_vecino > puntaje_actual:
+                estado_actual = mejor_vecino
+                puntaje_actual = puntaje_mejor_vecino
+                iteraciones += 1
+                historial.append(estado_actual)
+                historial_puntajes.append(puntaje_actual)
+            else:
+                mejora_el_estado = False
+                
+        else:
+            mejora_el_estado = False
+    
+    return OptimizationResult(best_configuration = estado_actual, best_score = puntaje_actual, evaluations = evaluaciones, iterations = iteraciones, history= historial, score_history = historial_puntajes)
 
 
 def cooling_schedule(initial_temperature: float, cooling_rate: float, iteration: int) -> float:
@@ -48,18 +79,11 @@ def cooling_schedule(initial_temperature: float, cooling_rate: float, iteration:
 
     Esta función se invoca desde simulated_annealing en cada iteración.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente cooling_schedule")
+    temperatura= initial_temperature * (cooling_rate **iteration)
+    
+    return temperatura
 
-
-def simulated_annealing(
-    problem: SmartGridOptimizationProblem,
-    initial_configuration: Configuration,
-    initial_temperature: float = 20.0,
-    cooling_rate: float = 0.97,
-    max_iterations: int = 500,
-    rng: random.Random | None = None,
-) -> OptimizationResult:
+def simulated_annealing(problem: SmartGridOptimizationProblem, initial_configuration: Configuration, initial_temperature: float = 20.0, cooling_rate: float = 0.97, max_iterations: int = 500, rng: random.Random | None = None,) -> OptimizationResult:
     """
     Ejecuta recocido simulado para un problema de maximización.
 
@@ -78,9 +102,50 @@ def simulated_annealing(
     """
     rng = rng or random.Random()
     minimum_temperature = 1e-9
+    
+    estado_actual = initial_configuration
+    puntaje_actual =configuration_score(problem, estado_actual)
+    mejor_estado= estado_actual
+    mejor_puntaje= puntaje_actual
+    evaluaciones = 1 
+    iteraciones= 0 
+    
+    historial =[estado_actual]
+    historial_puntajes = [puntaje_actual]
+    #recordadr que la temperatura varia tras cda iteracion 
+    temperatura = cooling_schedule(initial_temperature, cooling_rate, iteraciones)
+    hay_vecinos= True
+    while iteraciones < max_iterations and temperatura > minimum_temperature and hay_vecinos:
+        vecinos = problem.neighbors(estado_actual)
+        if len(vecinos) > 0:
+            candidato = rng.choice(vecinos)
+            puntaje_candidato = configuration_score(problem, candidato)
+            evaluaciones +=1
+            diferencia = puntaje_candidato - puntaje_actual
+            aceptar_candidato = False
+            if diferencia > 0:
+                aceptar_candidato = True
+            else:
+                probabilidad_aceptacion = math.exp(diferencia / temperatura)
+                numero_aleatorio = rng.random()
+                if numero_aleatorio < probabilidad_aceptacion:
+                    aceptar_candidato = True
+            if aceptar_candidato == True:
+                estado_actual= candidato
+                puntaje_actual = puntaje_candidato
+                if puntaje_actual > mejor_puntaje:
+                    mejor_estado = estado_actual
+                    mejor_puntaje = puntaje_actual
+            iteraciones +=1
+            historial.append(estado_actual)
+            historial_puntajes.append(puntaje_actual)
+                
+            temperatura = cooling_schedule(initial_temperature, cooling_rate, iteraciones)
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 2: implemente simulated_annealing")
+        else:
+            hay_vecinos = False
+            
+    return OptimizationResult(best_configuration=mejor_estado, best_score=mejor_puntaje, evaluations=evaluaciones, iterations=iteraciones, history=historial, score_history=historial_puntajes)
 
 
 def one_point_crossover(
