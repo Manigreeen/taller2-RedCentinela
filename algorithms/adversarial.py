@@ -78,11 +78,44 @@ class MinimaxAgent(MultiAgentSearchAgent):
             action_chosen = action
         
         return action_chosen
-
-
+      
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """Agente Minimax que evita explorar ramas mediante poda alfa-beta."""
-
+        
+    def _alphabeta_value(self, state: GameState, agent_index: int, depth_left: int, alpha: float, beta: float):
+      self.nodes_evaluated += 1
+        
+      if state.is_win() or state.is_lose() or depth_left == 0:
+        return evaluation_function(state)
+          
+      legal_actions = state.get_legal_actions(agent_index)
+      siguiente_agente = (agent_index + 1) % state.get_num_agents()
+      
+      if agent_index == 0:
+        value = float("-inf")
+        for action in legal_actions:
+          sucesor = state.generate_successor(agent_index, action)
+          child_value = self._alphabeta_value(sucesor, siguiente_agente, depth_left - 1, alpha, beta)
+          value = max(value, child_value)
+          
+          if value >= beta:
+            return value
+          
+          alpha = max(alpha, value)
+        return value
+      else:
+        value = float("inf")
+        for action in legal_actions:
+          sucesor = state.generate_successor(agent_index, action)
+          child_value = self._alphabeta_value(sucesor, siguiente_agente, depth_left - 1, alpha, beta)
+          value = min(value, child_value)
+          
+          if value <= alpha:
+            return value
+          
+          beta = min(beta, value)
+        return value
+      
     def get_action(self, state: GameState) -> str | None:
         """
         Retorna la acción de Minimax aplicando poda alfa-beta.
@@ -97,5 +130,27 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         - En MAX actualice alpha y corte si valor >= beta; en MIN actualice beta
           y corte si valor <= alpha.
         """
-        # TODO: Add your code here
-        raise NotImplementedError("Punto 5: implemente AlphaBetaAgent.get_action")
+        
+        self.nodes_evaluated = 0
+        self.nodes_evaluated += 1
+               
+        legal_actions = state.get_legal_actions(0)
+        if legal_actions == []:
+          return None
+               
+        best_value = float("-inf")
+        best_action = ""
+        alpha = float("-inf")
+        beta = float("inf")
+                   
+        for action in legal_actions:
+         successor_state = state.generate_successor(0, action)
+         value = self._alphabeta_value(successor_state, 1, self.depth - 1, alpha, beta)
+              
+         if value > best_value or best_action == "":
+           best_value = value
+           best_action = action
+                 
+         alpha = max(alpha, best_value)
+                  
+        return best_action

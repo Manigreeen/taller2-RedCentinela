@@ -166,8 +166,11 @@ def one_point_crossover(
     if len(parent1) < 2:
         return parent1, parent2
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente one_point_crossover")
+    punto = rng.randint(1, len(parent1) - 1)
+    hijo1 = parent1[:punto] + parent2[punto:]
+    hijo2 = parent2[:punto] + parent1[punto:]
+    
+    return hijo1, hijo2
 
 
 def swap_mutation(
@@ -186,9 +189,19 @@ def swap_mutation(
     - Si alguno de los dos grupos está vacío, no hay un intercambio posible.
     - Retorne una tupla nueva; no modifique el individuo recibido.
     """
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente swap_mutation")
-
+    if rng.random() >= mutation_probability:
+        return individual
+    
+    activo = [i for i, bit in enumerate(individual) if bit]
+    inactivo = [i for i, bit in enumerate(individual) if not bit]
+    
+    if not activo or not inactivo:
+        return individual
+    
+    prendido = rng.choice(activo)
+    apagado = rng.choice(inactivo)
+    
+    return tuple(1 if i == apagado else 0 if i == prendido else bit for i, bit in enumerate(individual))
 
 def genetic_algorithm(
     problem: SmartGridOptimizationProblem,
@@ -223,5 +236,47 @@ def genetic_algorithm(
     if not 0 <= elite_size <= population_size:
         raise ValueError("elite_size debe estar entre 0 y population_size")
 
-    # TODO: Add your code here
-    raise NotImplementedError("Punto 3: implemente genetic_algorithm")
+    poblacion = problem.initial_population(population_size, rng)
+    evaluaciones = 0
+    mejor_config = None
+    mejor_puntaje = float("-inf")
+    historial = []
+    historial_puntaje = []
+
+    for _ in range(generations):
+        puntajes = [configuration_score(problem, c) for c in poblacion]
+        evaluaciones += len(poblacion)
+
+        for config, puntaje in zip(poblacion, puntajes):
+            if puntaje > mejor_puntaje:
+                mejor_config = config
+                mejor_puntaje = puntaje
+
+        historial.append(mejor_config)
+        historial_puntaje.append(mejor_puntaje)
+
+        top = sorted(zip(poblacion, puntajes), key=lambda pair: pair[1], reverse=True)
+        nueva_poblacion = [config for config, _ in top[:elite_size]]
+
+        while len(nueva_poblacion) < population_size:
+            p1 = problem.tournament_select(poblacion, puntajes, rng)
+            p2 = problem.tournament_select(poblacion, puntajes, rng)
+            c1, c2 = one_point_crossover(p1, p2, rng)
+            c1 = problem.repair_configuration(c1, rng)
+            c2 = problem.repair_configuration(c2, rng)
+            c1 = swap_mutation(c1, mutation_probability, rng)
+            c2 = swap_mutation(c2, mutation_probability, rng)
+            nueva_poblacion.append(c1)
+            if len(nueva_poblacion) < population_size:
+                nueva_poblacion.append(c2)
+
+        poblacion = nueva_poblacion
+
+    return OptimizationResult(
+        best_configuration=mejor_config,
+        best_score=mejor_puntaje,
+        evaluations=evaluaciones,
+        iterations=generations,
+        history=historial,
+        score_history=historial_puntaje,
+    )
